@@ -1,0 +1,9 @@
+sever端：
+	Filename.php:(1)修改configure區域(2)刪除reset_data與show_data函數
+	Filename.txt=""
+	Filename_st.txt="AAAAAAAAAAAAAAAAAAA"
+client端：
+	index.html:刪除測試區
+	config.js:設定
+	acount.js:設定
+	pwd.js:用tools建立

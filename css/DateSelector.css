@@ -1,0 +1,22 @@
+.cal{
+	width:100%;
+	max-width:20em;
+	border-collapse:collapse;
+	cursor:default;}
+.cal td{
+	width:14%;
+	border:solid 1px lightgray;;
+	text-align:center;}
+.cal td.other{
+	cursor:pointer;}
+.cal td.sun{
+	color:red;
+	cursor:pointer;}
+.cal td.sat{
+	color:green;
+	cursor:pointer;}
+.cal td.select{
+	background-color:gray;color:yellow;
+	cursor:pointer;}
+.cal td.hav{
+	padding-left:0.25em;padding-right:0.25em;}
