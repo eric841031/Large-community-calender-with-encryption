@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title id="Title">未命名</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0" />
+<link rel="stylesheet" type="text/css" href="css/DateSelector.css">
+<style type="text/css">
+#dev{display:inline-block;width:20em;right:2px;border:1px dashed gray;padding:0.5em}
+#panel1{width: 100%;max-width:20em;}
+
+.cal td.evt{background-color: cyan;}
+img.FR{float:right;}
+#label{display:inline-block;clear:both;width: 100%;}
+div.txt_evt{border:1px solid gray;border-radius:5px;clear:both;width: 98%;margin:1px;}
+
+#page2{clear:both;}
+#txt_Add{display:block;width:100%;margin:0px;}
+button.FR{float:right;}
+</style>
+<script type="text/javascript" src="config.js"></script>
+<script type="text/javascript" src="javascript/DateSelector.js"></script>
+<script type="text/javascript" src="javascript/utf8b64.js"></script>
+<script type="text/javascript" src="javascript/php.js"></script>
+<script type="text/javascript" src="javascript/svg_checkbox.js"></script>
+<script type="text/javascript" src="javascript/ByteStream.js"></script>
+<script type="text/javascript" src="javascript/CharEncoding.js"></script>
+<script type="text/javascript" src="javascript/AES.js"></script>
+<script type="text/javascript" src="javascript/CBCR.js"></script>
+<script type="text/javascript" src="javascript/SHA3.js"></script>
+<script type="text/javascript" >
+var date_obj,g_obj,filter_obj,display_mode=1;
+var php_str="";
+var StyleArray=[[]];
+var php_res="";
+function init()
+{
+	document. getElementById("Title").innerHTML=const_title;
+	{//產生群組選單
+	g_obj=document .getElementById("group");
+	for(var i=0,op;i<group.length;++i)
+	{
+		g_obj.appendChild(op=document. createElement("option"));
+		op.innerHTML=group[i];
+	}
+	}//==========
+	document .getElementById("date").appendChild(date_obj=createCalendar("onSelectCell()","onChangePage()",cbk_3));
+	window.addEventListener("resize", ResizeFunction);
+	var d=date_obj.GetDate();
+	ResizeFunction();	
+	onChangePage();
+	document .getElementById("label").appendChild(filter_obj=createSvgCheckBoxBar(user_colors.concat(group_colors),"phpcbk_1()"));
+}
+function SCBClick()
+{
+	var A=[];
+	for(var i=0,color_str,j;i<filter_obj.children.length;++i)
+	{
+		if(filter_obj.children[i].checked)
+		{
+			color_str=filter_obj.children[i].children[0].getAttributeNS(null,"style").match(/#.{6}/)[0];
+			for(j=0;j<user_colors.length && user_colors[j]!=color_str;++j);
+			if(j<user_colors.length)
+			{
+				A.push(j+1);
+				continue;
+			}
+			for(j=0;j<group_colors.length && group_colors[j]!=color_str;++j);
+			if(j<group_colors.length)
+				A.push(-j-1);
+		}
+	}
+	php_str=php_res.trim().split("\n");
+	var uid,gid;
+	for(var i=0,j;i<php_str.length;)
+	{//根據CheckBox資料，篩選php_str
+		uid=B64AtoV(php_str[i],9,2)&0x1FF;
+		gid=B64AtoV(php_str[i],11,2)&0x1FF;
+		for(j=0;j<A.length && !(gid==0&&uid==A[j]) && gid!=-A[j];++j);
+		if(j==A.length) //沒找到
+		{
+			php_str[i]=php_str[php_str.length-1];
+			--php_str.length;
+		}
+		else
+			++i;
+	}
+}
+function onChangePage()
+{
+	//此時已經自動畫好表格
+	ResizeFunction();
+	//向php查詢資料
+	var d=date_obj.ShowDate;
+	//向sever讀取該月資料
+	call_php(const_sever
+		,"cmd=read&key="+key
+			+"&date="+VtoB64A((d.y*12+d.m)*31+1,4)
+			+"&dateE="+VtoB64A((d.y*12+d.m+1)*31,4)
+			+"&uid="+VtoB64A(me,2)
+		,'php_res=php_str=http.responseText;phpcbk_1();'
+		,document .getElementById("st"));
+}
+function sort_by(a,b)
+{
+	return a.substr(5).localeCompare(b.substr(5));
+}
+function get_key_from_pwd(n) //return key=[int,int,int,int] at pwd.js
+{
+	var aes_key=[];
+	var bs=new ByteStream;
+	bs.putBase64Str(pwd.substr(Math.floor(n*64/3),24));
+	for(var i=0,ii=n%3*2;i<4;++i)
+	{
+		aes_key[i]=(bs.get_byte(i*4+0)&0xFF>>>ii)|
+		(bs.get_byte(i*4+1)<<8-ii)|
+		(bs.get_byte(i*4+2)<<16-ii)|
+		(bs.get_byte(i*4+3)<<24-ii)|
+		(bs.get_byte(i*4+4)&0xFF>>>8-ii)<<32-ii;
+	}
+	return aes_key;
+}
+function phpcbk_1()
+{
+	if(display_mode)
+		SCBClick();
+	else
+		php_str=php_res.trim().split("\n");
+	php_str.sort(sort_by);
+	StyleArray=[["evt"]];
+	var j,k,t;
+	for(j=0;j<php_str.length;++j) //處理StyleArray
+	{
+		k=B64AtoV(php_str[j],5,4);
+		//如果是gid==0 color=user_color[uid-1];,如果是gid!=0 color=user_color[gid-1];
+		uid=B64AtoV(php_str[j],9,2)&0x1FF;
+		gid=B64AtoV(php_str[j],11,2)&0x1FF;
+		var square_color=gid==0?user_colors[uid-1]:group_colors[gid-1];
+		//如果沒有同一天沒有重覆的顏色才加入
+		if(display_mode)
+		{
+			for(t=StyleArray[0].length-1;t>=0 && k%31==StyleArray[0][t].d;--t)
+				if(StyleArray[0][t].c==square_color)
+				{
+					t=-2;
+					break;
+				}
+			if(square_color!=null && t>-2)
+				StyleArray[0].push({d:k%31,c:square_color});
+		}
+		else
+			StyleArray[0].push({d:k%31,c:null});
+		k=B64AtoV(php_str[j],13,4);
+		if((k&0x800000) && !(k&0x400000))
+		{//解密
+			var aes_key=get_key_from_pwd(k&0x3FFFFF);
+			var bs2=new ByteStream;
+			bs2.putBase64Str(php_str[j].substr(17).replace(/!/g,"="));
+			php_str[j]=php_str[j].substr(0,17)+cbcR_decode(bs2,aes_key,utf8_dec);
+		}
+		k=php_str[j].substr(17).replace(/\\n/g,"\n").replace(/\\\n/g,"\\\\n").replace(/\\\\/g,"\\");
+		php_str[j]=php_str[j].substr(0,17)+k;
+	}
+	
+	CalendarRefreshBack(date_obj); //更新畫面日歷畫面
+	CalendarRefreshFront(date_obj); //更新選擇按鈕
+	onSelectCell();
+}
+function cbk_3(cell,k)
+{
+	if(k=="")
+		return;
+	k=parseInt(k);
+	var A=StyleArray[0];
+	var CT=cell.childNodes[0];
+	for(var i=1,c=0,tp=null,tp;i<A.length;++i)
+		if(k==A[i].d)
+		{
+			if(display_mode)
+			{
+				if(tp==null)
+				{
+					cell.appendChild(tp=document .createElement("div"));
+					tp.setAttribute("style","\
+							width:100%;\
+							height:5px;\
+							margin-left:-100%;\
+							margin-bottom:-5px;\
+							left:100%;\
+							bottom:5px;\
+							text-align:left;\
+							position:relative;");
+				}
+				tp.appendChild(t=document .createElement("div"));
+				t.setAttribute("style","\
+							background:"+A[i].c+";\
+							width:5px;\
+							height:5px;\
+							margin-left:-5px;\
+							margin-bottom:-5px;\
+							left:"+(6*++c)+"px;\
+							position:relative;");
+			}
+			else
+				cell.setAttribute("class",A[0]);
+		}
+}
+function onSelectCell()
+{
+	var d=date_obj.GetDate();
+	var srh=VtoB64A((d.y*12+d.m)*31+d.d,4);
+	var str="";
+	var k,t,td,group_name;
+	var fg;
+	var cur_obj=document .getElementById("current_event");
+	cur_obj.innerHTML="";
+	for(var i=0;i<php_str.length;++i)
+	{
+		k=php_str[i].search(srh);
+		if(k==5)
+		{
+			var pwd_need=(B64AtoV(php_str[i],13,4)&0x400000);
+			var pwd_use=(B64AtoV(php_str[i],13,4)&0x800000);
+			fg=document .createDocumentFragment();
+			fg.appendChild(td=document. createElement("div"));
+			td.setAttribute("class","txt_evt");
+			//關閉按鈕
+			td.appendChild(t=document. createElement("img"));
+			t.setAttribute("src","images/close.svg");
+			t.setAttribute("class","FR");
+			t.setAttribute("onclick","onClickDelete('"+i+"')");
+			//編輯或解鎖按鈕
+			td.appendChild(t=document. createElement("img"));
+			t.setAttribute("src",pwd_need?"images/key.svg":"images/edit.svg");
+			t.setAttribute("class","FR");
+			t.setAttribute("onclick",pwd_need?"password_input('"+i+"')":"showEditPanel('"+i+"')");
+			//文字內容
+			group_name=(B64AtoV(php_str[i],11,2)&0x1FF);
+			if(group_name==0)
+				group_name=(B64AtoV(php_str[i],9,2)&0x800)?"公開":"私人";
+			else
+				group_name=group[group_name-1];
+			td.innerHTML+="<span style='color:gray'>"+group_name+(pwd_use?"(加密)":"")+":</span><br>"
+					+(pwd_need?"點擊輸入密碼":php_str[i].substr(17).replace(/\n/g,"<br>"))
+			cur_obj.appendChild(fg);
+		}
+	}
+}
+function password_input(resv)
+{
+	var k=get_key_from_pwd(B64AtoV(php_str[resv],13,4)&0x3FFFFF);
+	var str=resv<0?"":php_str[resv].substr(17);
+	var p=prompt("密碼:", "");
+	var bs=new ByteStream;
+	bs.push_str(p,utf8_enc);
+	p=SHAKE128({A:bs.A,N:bs.N},128,1);
+	for(var i=0;i<4;++i)
+		k[i]^=p[i];
+	var bs2=new ByteStream;
+	bs2.putBase64Str(php_str[resv].substr(17).replace(/!/g,"="));
+	str=cbcR_decode(bs2,k,utf8_dec).replace(/\\n/g,"\n").replace(/\\\n/g,"\\\\n").replace(/\\\\/g,"\\");
+	var r=confirm("解出以下訊息，是否正確？"+str);
+	if(r)
+	{
+		php_str[resv]=php_str[resv].substr(0,13)+"AAAA"+str;
+		onSelectCell();
+	}
+}
+function showEditPanel(resv)
+{
+	var str=resv<0?"":php_str[resv].substr(17);
+	document .getElementById("page1").setAttribute("style","display:none;");
+	document .getElementById("txt_Add").value=str;
+	document .getElementById("page2").setAttribute("style","display:block;");
+	document .getElementById("save").setAttribute("onclick",resv<0?"AddData()":"EditData("+resv+")");
+	document .getElementById("group").setAttribute("display",resv<0?"display:inline;":"display:none;");
+	ResizeFunction();
+}
+function cancelEdit()
+{
+	document .getElementById("page2").setAttribute("style","display:none;");
+	document .getElementById("page1").setAttribute("style","display:block;");
+}
+function AddData()
+{
+	var d=date_obj.GetDate();
+	var gid=g_obj.selectedIndex;//<=user.length?0:g_obj.selectedIndex-user.length;
+	var uid=me;
+	var ckd=document .getElementById("ReadOnly").checked;
+	if(gid<2)
+	{
+		uid|=(gid?(ckd?0x800:0xE00):0);
+		gid=0;
+	}
+	else
+		gid=gid-1|(ckd?0x800:0xE00);
+	var val=document .getElementById("txt_Add").value;
+	val=val.replace(/\\/g,"\\\\").replace(/\n/g,"\\n");
+	if(document. getElementById("IsEnc").checked)
+		val=encode_setting(val);
+	else
+		val="AAAA"+val;
+	document .getElementById("page2").setAttribute("style","display:none;");
+	call_php(const_sever
+		,"cmd=add&key="+key
+			+"&date="+VtoB64A((d.y*12+d.m)*31+d.d,4)
+			+"&uid="+VtoB64A(uid,2)
+			+"&gid="+VtoB64A(gid,2)
+			+"&val="+val
+		,'onChangePage();'
+		,document .getElementById("st"));
+	document .getElementById("page1").setAttribute("style","display:block;");
+	ResizeFunction();
+}
+function encode_setting(org_str) //pop up dialogs, return encoded string
+{
+	var r,pwd_hash,key_n,max_kn=Math.floor(pwd.length*3/64);
+	if(confirm("是否啟用進階安全措施？"))
+	{
+		pwd_hash=prompt("密碼:", "");
+		if(pwd_hash=="")
+			pwd_hash=[0,0,0,0];
+		else
+		{
+			var bs=new ByteStream;
+			bs.push_str(pwd_hash,utf8_enc);
+			pwd_hash=SHAKE128({A:bs.A,N:bs.N},128,1);
+		}
+		key_n=parseInt(prompt("第幾把鑰匙", ""));
+		if(key_n<0 || key_n>max_kn)
+			key_n=0;
+	}
+	else
+	{
+		key_n=0;
+		pwd_hash=[0,0,0,0];
+	}
+	var aes_key=get_key_from_pwd(key_n);
+	for(var i=0;i<4;++i)
+		aes_key[i]^=pwd_hash[i];
+	//alert(org_str+aes_key);
+	var bs=cbcR_encode(org_str,aes_key,utf8_enc);
+	return VtoB64A((pwd_hash[0]|pwd_hash[1]|pwd_hash[2]|pwd_hash[3])?0xC00000|key_n:0x800000|key_n,4)
+	+bs.getBase64Str(0,-1).replace(/=/g,"!");
+}
+function EditData(id)
+{
+	//key,did,uid,val
+	var val=document .getElementById("txt_Add").value;
+	val=val.replace(/\\/g,"\\\\").replace(/\n/g,"\\n");
+	if(document. getElementById("IsEnc").checked)
+		val=encode_setting(val);
+	else
+		val="AAAA"+val;
+	document .getElementById("page2").setAttribute("style","display:none;");
+	call_php(const_sever
+		,"cmd=edit&key="+key
+			+"&did="+php_str[id].substr(0,5)
+			+"&uid="+VtoB64A(me,2)
+			+"&val="+val
+		,'onChangePage();'
+		,document .getElementById("st"));
+	document .getElementById("page1").setAttribute("style","display:block;");
+	ResizeFunction();
+}
+function onClickDelete(i)
+{
+	var did=php_str[i].substr(0,5);
+	var str=php_str[i].length>17+20?php_str[i].substr(17,20)+"...":php_str[i].substr(17);
+	if(confirm("確認刪除資料:"+str))
+		call_php(const_sever
+			,"cmd=del&key="+key
+				+"&did="+did
+				+"&uid="+VtoB64A(me,2)
+			,'onChangePage();'
+			,document .getElementById("st"));
+}
+function ResizeFunction()
+{
+	var h=window .innerHeight;
+	var h_st=document .getElementById("st").offsetHeight;
+	
+	var h1=document .getElementById("date").offsetHeight;
+	var h2=document .getElementById("label").offsetHeight;
+	document .getElementById("current_event").setAttribute("style","height:"+(h-h1-h2-h_st-20)+"px;overflow-y:auto;width:100%;");
+	
+	var h3=document .getElementById("save").offsetHeight;
+	document .getElementById("txt_Add").setAttribute("style","height:"+(h-h3-h_st-20)+"px");
+}
+function sss()
+{
+	if(g_obj.selectedIndex)
+		document. getElementById("readonly").setAttribute("style","display:inline-block");
+	else
+		document. getElementById("readonly").setAttribute("style","display:none");
+}
+{//dev
+	function change_user() 
+	{
+		me=document. getElementById("user_id").selectedIndex+1;
+	}
+		
+}
+function View(k) //k==0 to globel
+{
+	var g=document .getElementById("globel_img");
+	var f=document .getElementById("fliter_img");
+	g.setAttribute("style",k==1?"float:right;":"display:none;");
+	f.setAttribute("style",k==0?"float:right;":"display:none;");
+	filter_obj.setAttribute("style",k==1?"display:inline-block;":"display:none;");
+	display_mode=k;
+	phpcbk_1();
+}
+</script>
+</head>
+<body onload="init()">
+<div id="panel1">
+	<div id="page1">
+		<div id="date"></div>
+		<div id="label">
+			<img src='images/add.svg' onclick='showEditPanel(-1)' style='float:right'>
+			<img src='images/globel.svg' id="globel_img" onclick='View(0)' style='float:right'>
+			<img src='images/fliter.svg' id="fliter_img" onclick='View(1)' style='display:none'>
+		</div>
+		<div id="current_event"></div>
+	</div>
+	<div id="page2" style="display:none;">
+		<textarea id="txt_Add"></textarea>
+		發送到:<select id="group" onchange="sss()">
+			<option>自己</option>
+			<option>公開</option>
+		</select>
+		<div id="readonly" style="display:none;"><input id="ReadOnly" type="checkbox">唯讀</div>
+		<input id="IsEnc" type="checkbox">加密
+		<div><button id="save" class="FR">儲存</button><button class="FR" onclick="cancelEdit()">取消</button></div>
+	</div>
+	<div id="st"></div>
+</div>
+</body>
+</html>
+

@@ -125,12 +125,14 @@ function SHAKE128(M,d,ret_type)
 		++obj.N;
 	}
 	var f=new keccak_p_1600_24();
+	//製造P=copy(M),S={A:[0,0,...],N:400}
 	var P={A:[],N:M.N};
 	var S={A:[],N:400};
 	for(var i=0;i<100;++i)
 		S.A[i]=0;
 	for(var i=0;i<M.A.length;++i)
 		P.A[i]=M.A[i];
+	//填滿P為168的整數倍
 	if(P.N%168==167)
 		push_byte_macro(P,0xF9);
 	else
@@ -140,6 +142,7 @@ function SHAKE128(M,d,ret_type)
 			push_byte_macro(P,0x00);
 		push_byte_macro(P,0x80);
 	}
+	//吸收
 	var n=(P.N/168|0);
 	var str="";
 	for(var i=0;i<n;++i)
@@ -148,6 +151,7 @@ function SHAKE128(M,d,ret_type)
 			S.A[j]^=P.A[i*42+j];
 		f.run(S.A);
 	}
+	//擠出
 	var Z={A:[],N:168};
 	for(var k=0;k<42;++k)
 		Z.A[k]=S.A[k];
@@ -155,7 +159,7 @@ function SHAKE128(M,d,ret_type)
 	{
 		f.run(S.A);
 		for(var k=0;k<42;++k)
-			Z.A[Z.N++]=S[k];
+			Z.A[Z.N++]=S.A[k];
 	}
 	if(!ret_type)
 	{
@@ -166,6 +170,9 @@ function SHAKE128(M,d,ret_type)
 		}
 		return str;
 	}
-	Z.A.length=(d>>>5);
+	d>>>=3; //bytes
+	Z.A.length=(d>>>2)+((d&0x3)?1:0);
+	if(d&3)
+		Z.A[Z.A.length-1]&=0xFFFFFFFF<<8*(d&3);
 	return Z.A;
 }

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>組態設定</title>
+	<script src="javascript/utf8b64.js" type="text/javascript"></script>
+	<script src="javascript/SHA3.js" type="text/javascript"></script>
+	<script src="template.js" type="text/javascript"></script>
+	<script src="setting.js" type="text/javascript"></script>
+</head>
+<body>
+	<button onclick="run()">OK</button>
+	<h2>全站設定</h2>
+	使用者名稱 <input type="text" value="使用者1,使用者2" id="user">(逗號分隔)<br>
+	群組名稱 <input type="text" value="群組1,群組2" id="group">(逗號分隔)<br>
+	群組設定 <input type="text" value="1,2;2" id="group_s">(分號分隔群組，逗號分隔使用者)<br>
+	KEY <input type="text" value="thisiskey" id="KEY">
+	<h2>伺服器端</h2>
+	網站位置 <input type="text" value="http://re.site.com/" id="WEB"><br>
+	PHP名稱 <input type="text" value="sever.php" id="PHP"><br>
+	文字資料庫1 <input type="text" value="sever.txt" id="DB1"><br>
+	文字資料庫2 <input type="text" value="sever_st.txt" id="DB2">
+	<div id="out1">
+		<a id="outPHP"></a>
+		<a id="outDB1"></a>
+		<a id="outDB2"></a>
+	</div>
+	<h2>客戶端</h2>
+	標題 <input type="text" value="個人行事曆" id="title"><br>
+	使用者顏色 <input type="text" value="#FF0000,#00FFFF" id="color-user">(逗號分隔)<br>
+	群組顏色 <input type="text" value="#FF0000,#00FFFF" id="color-group">(逗號分隔)<br>
+	密碼本 <input type="text" id="TPWD">字<br>
+	擾亂種子 <input type="file" id="FPWD">
+	<div id="out2">
+		<a id="outMAIN"></a>
+		<a id="outCFG"></a>
+	</div>
+	<hr>
+	<h2>樣板</h2>
+	PHP<input type="file" id="FPHP"><br>
+	HTM<input type="file" id="FHTML"><br>
+	<button onclick="TemplateConvert()">OK</button>
+	<div id="out3">
+		<a id="outTEMPLATE"></a>
+	</div>
+	<pre id="dbg"></pre>
+</body>
+</html>
