@@ -134,7 +134,7 @@ function SHAKE128(M,d,ret_type)
 		P.A[i]=M.A[i];
 	//填滿P為168的整數倍
 	if(P.N%168==167)
-		push_byte_macro(P,0xF9);
+		push_byte_macro(P,0x9F);
 	else
 	{
 		push_byte_macro(P,0x1F);
